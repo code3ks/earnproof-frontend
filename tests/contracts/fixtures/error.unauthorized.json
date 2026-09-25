@@ -1,0 +1,6 @@
+{
+  "statusCode": 401,
+  "code": "INVALID_TOKEN",
+  "message": "Authentication token is invalid.",
+  "requestId": "fixture-request-1"
+}

@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "type": "earnproof.verify",
+  "appUrl": "https://app.earnproof.example",
+  "sizes": [
+    { "name": "short", "proofId": "ep_7F3A" },
+    { "name": "medium", "proofId": "EP-8A42-91DC" },
+    { "name": "long", "proofId": "EP-SYNTHETIC-PROOF-ID-0001-SAFE" }
+  ]
+}

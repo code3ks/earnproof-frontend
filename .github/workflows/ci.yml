@@ -16,4 +16,89 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run lint
+      - run: npm run test -- --runInBand
+      - run: npm run test:contracts
+      - run: npm run audit:browser-apis
+      - run: npm run validate:production
+      - run: npm run check:doc-freshness
       - run: npm run build
+      # Bundle composition gate (issue #82). Runs its own production build
+      # with ANALYZE_BUNDLE=1 so Turbopack emits the client source maps the
+      # analyzer needs to attribute chunks to packages; the build above stays
+      # a normal, source-map-free production build.
+      - name: Check bundle composition and duplicate dependency budgets
+        run: npm run bundle:analyze
+      - name: Upload bundle composition report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          # Sizes and package names only - no application data, no secrets.
+          name: bundle-composition-report
+          path: .next/analyze/bundle-report.json
+          retention-days: 14
+
+  # NOTE: a stray empty `accessibility:` key used to sit here, which made the
+  # whole workflow fail YAML validation. The accessibility scans run as steps
+  # of the job below.
+  visual-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Run accessibility scans (axe + keyboard)
+        run: npm run test:e2e:a11y
+        env:
+          CI: true
+      - name: Upload accessibility report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: accessibility-report
+          path: playwright-report/
+      - run: npm run build
+      - name: Run visual regression suite
+        run: npm run test:e2e:visual
+      - name: Upload visual diff artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-regression-report
+          # Fixtures are 100% synthetic (see e2e/visual/fixtures) — never
+          # real user data, wallets, or credentials — so this artifact is
+          # safe to retain for triage.
+          path: |
+            e2e/visual/.report
+            e2e/visual/.test-results
+          include-hidden-files: true
+          retention-days: 14
+      - name: Check route performance budgets
+        run: node scripts/performance/check-budgets.js
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+        env:
+          CI: true
+      # Fixture data is synthetic (no real wallet secrets or live network
+      # calls), and the Playwright config only keeps traces/screenshots for
+      # failing tests, so nothing sensitive should ever land here — this
+      # upload exists purely to help diagnose a failing run.
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

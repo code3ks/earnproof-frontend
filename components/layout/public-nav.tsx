@@ -4,19 +4,25 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { NetworkBadge } from "@/components/common/network-badge";
+import { MobileNav } from "@/components/layout/mobile-nav";
 
 const navItems = [
   { href: "/how-it-works", label: "Product" },
-  { href: "/proofs/create", label: "Proofs" },
+  { href: "/proofs", label: "Proofs" },
   { href: "/issuers", label: "Issuers" },
   { href: "/developers", label: "Developers" },
+  { href: "/settings", label: "Settings" },
 ];
 
 export function PublicNav() {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "/";
+  const isActive = (href: string) =>
+    pathname === href ||
+    (href === "/proofs" && pathname.startsWith("/proofs")) ||
+    (href === "/settings" && pathname.startsWith("/settings"));
 
   return (
-    <header className="border-b border-white/10 bg-slate-950">
+    <header className="relative border-b border-white/10 bg-slate-950 print:hidden">
       <div className="flex h-[60px] w-full max-w-[1440px] items-center gap-3 px-3 sm:h-[72px] sm:gap-5 sm:px-5">
         <Link className="flex min-w-0 flex-1 items-center gap-2.5 text-xl font-semibold text-white sm:max-w-[210px]" href="/">
           <Image
@@ -34,7 +40,7 @@ export function PublicNav() {
           {navItems.map((item) => (
             <Link
               className={
-                pathname === item.href || (item.href === "/proofs/create" && pathname.startsWith("/proofs"))
+                isActive(item.href)
                   ? "font-medium text-cyan-200"
                   : "transition-colors hover:text-white"
               }
@@ -45,6 +51,8 @@ export function PublicNav() {
             </Link>
           ))}
         </nav>
+
+        <MobileNav isActive={isActive} items={navItems} />
 
         <div className="shrink-0">
           <NetworkBadge />

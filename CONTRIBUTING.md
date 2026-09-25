@@ -6,11 +6,19 @@ Thanks for improving EarnProof. This repository contains the public web app and 
 
 ```bash
 npm install
+git config core.hooksPath .githooks
 cp .env.example .env.local
 npm run dev
 ```
 
 Default local URL: `http://localhost:3000`.
+
+`npm install` configures the tracked Git hooks automatically. The explicit Git
+command above also enables them in an existing checkout. The pre-commit hook
+runs unit tests when staged frontend code or configuration changes. The
+commit-message hook accepts conventional subjects such as `feat: add proof
+search` and `fix(wallet): handle rejected signatures`; scopes and issue IDs are
+optional.
 
 ## Validation
 
@@ -21,6 +29,21 @@ npm run lint
 npm run build
 ```
 
+## Visual regression baselines
+
+`e2e/visual/` contains a Playwright suite that screenshots representative
+routes/states and compares them to committed baseline images (see
+`e2e/visual/README.md`). If your change intentionally alters a covered
+layout:
+
+- Regenerate baselines with `npm run test:e2e:visual:update`, generated
+  from the same environment CI runs in (see the README for why).
+- Review every changed baseline image yourself before committing it.
+- Call this out explicitly in your pull request description (e.g. a
+  `## Visual baseline update` section naming which snapshots changed and
+  why). A PR that updates baseline images without that note should be
+  treated as unreviewed and not approved as-is.
+
 ## Contribution Expectations
 
 - Keep changes scoped to the issue you are solving.
@@ -29,6 +52,7 @@ npm run build
 - Keep verification pages limited to intentionally disclosed proof data.
 - Add tests or fixtures when changing behavior that can regress.
 - Update documentation when user-facing behavior changes.
+- Never commit real user data, wallet material, or credentials in test fixtures — visual/e2e fixtures must be synthetic.
 
 ## Definition of Done
 

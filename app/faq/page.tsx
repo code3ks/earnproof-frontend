@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useCallback, useRef, useState } from "react";
 import { PageHeading } from "@/components/common/page-heading";
 import { pageContainer } from "@/components/common/production-ui";
 import { PublicShell } from "@/components/layout/public-shell";
@@ -12,6 +12,7 @@ interface FAQItemWithOpen extends FAQItem {
 }
 
 export default function FAQPage() {
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [faqItems, setFaqItems] = useState<FAQItemWithOpen[]>(
     faqData.map((item) => ({ ...item, isOpen: false }))
@@ -45,6 +46,9 @@ export default function FAQPage() {
   // Reset search
   const handleClearSearch = () => {
     setSearchQuery("");
+    // The "Clear" button unmounts once the query is empty; move focus back
+    // to the search field so it isn't lost to <body>.
+    searchInputRef.current?.focus();
   };
 
   // Count stats
@@ -90,6 +94,7 @@ export default function FAQPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 aria-label="Search frequently asked questions"
                 className="h-11 rounded-lg border border-white/15 bg-transparent px-3 text-sm font-normal text-white placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+                ref={searchInputRef}
               />
             </label>
             {searchQuery && (
@@ -135,7 +140,7 @@ export default function FAQPage() {
                   <span className="text-slate-300 capitalize">
                     {item.category}
                   </span>
-                  <span className="inline-flex h-7 w-fit items-center rounded-lg border border-cyan-300/30 bg-cyan-300/10 px-1.5 text-xs font-semibold uppercase leading-4 text-cyan-200">
+                  <span className="inline-flex h-7 w-fit items-center rounded-lg border border-cyan-300/50 bg-cyan-300/10 px-1.5 text-xs font-semibold uppercase leading-4 text-cyan-200">
                     Active
                   </span>
                 </article>
@@ -192,8 +197,14 @@ export default function FAQPage() {
                   role="region"
                   aria-labelledby={`question-${item.id}`}
                   hidden={!item.isOpen}
+                  // An open answer must not be height-capped: at 40% text
+                  // expansion (or at browser zoom, or with a longer
+                  // translation) a `max-h-96` clamp combined with
+                  // `overflow-hidden` silently cuts the answer off with no
+                  // way to scroll to the rest. The closed state keeps its
+                  // clamp, which is what the collapse animation needs.
                   className={`border-t border-white/10 transition-all overflow-hidden ${
-                    item.isOpen ? "max-h-96" : "max-h-0"
+                    item.isOpen ? "max-h-none" : "max-h-0"
                   }`}
                 >
                   <p className="px-4 py-4 sm:px-5 sm:py-5 text-sm leading-6 text-slate-300">

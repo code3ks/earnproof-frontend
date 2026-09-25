@@ -12,6 +12,10 @@
 
 # testing
 /coverage
+/playwright-report/
+/test-results/
+/blob-report/
+/playwright/.cache/
 
 # next.js
 /.next/
@@ -40,3 +44,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# playwright visual regression suite (baselines under *-snapshots/ ARE committed)
+/e2e/visual/.report/
+/e2e/visual/.test-results/
+/blob-report/
+/playwright/.cache/

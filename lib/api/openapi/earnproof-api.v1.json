@@ -1,0 +1,715 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "EarnProof API",
+    "version": "1.0.0",
+    "description": "Versioned frontend contract fixture for EarnProof API v1. Examples are synthetic and privacy-safe."
+  },
+  "x-earnproof-source": "lib/api/openapi/earnproof-api.v1.json",
+  "servers": [{ "url": "http://localhost:4000/api/v1" }],
+  "tags": [
+    { "name": "health" },
+    { "name": "auth" },
+    { "name": "payments" },
+    { "name": "proofs" },
+    { "name": "issuers" },
+    { "name": "organizations" },
+    { "name": "api-keys" },
+    { "name": "webhooks" }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["health"],
+        "operationId": "getHealth",
+        "responses": {
+          "200": {
+            "description": "Health",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/HealthResponse" } } }
+          }
+        }
+      }
+    },
+    "/auth/challenge": {
+      "post": {
+        "tags": ["auth"],
+        "operationId": "createAuthChallenge",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateChallengeRequest" } } }
+        },
+        "responses": {
+          "201": {
+            "description": "Challenge",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthChallengeResponse" } } }
+          },
+          "400": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/auth/verify": {
+      "post": {
+        "tags": ["auth"],
+        "operationId": "verifyAuthChallenge",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/VerifyChallengeRequest" } } }
+        },
+        "responses": {
+          "201": {
+            "description": "Session",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthVerifyResponse" } } }
+          },
+          "401": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/payments": {
+      "get": {
+        "tags": ["payments"],
+        "operationId": "listPayments",
+        "responses": {
+          "200": {
+            "description": "Payments",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Payment" } }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/payments/sync": {
+      "post": {
+        "tags": ["payments"],
+        "operationId": "syncPayments",
+        "responses": {
+          "201": {
+            "description": "Sync result",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PaymentSyncResult" } } }
+          },
+          "401": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/payments/{id}/classification": {
+      "patch": {
+        "tags": ["payments"],
+        "operationId": "updatePaymentClassification",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdatePaymentClassificationRequest" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Payment",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Payment" } } }
+          },
+          "401": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/proofs/minimum-income": {
+      "post": {
+        "tags": ["proofs"],
+        "operationId": "createMinimumIncomeProof",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateMinimumIncomeProofRequest" } } }
+        },
+        "responses": {
+          "201": {
+            "description": "Created proof",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProofCreated" } } }
+          },
+          "401": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/proofs/payment-receipt": {
+      "post": {
+        "tags": ["proofs"],
+        "operationId": "createPaymentReceiptProof",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object" } } }
+        },
+        "responses": {
+          "201": {
+            "description": "Created payment receipt proof",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProofCreated" } } }
+          },
+          "401": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/proofs/recurring-income": {
+      "post": {
+        "tags": ["proofs"],
+        "operationId": "createRecurringIncomeProof",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object" } } }
+        },
+        "responses": {
+          "201": {
+            "description": "Created recurring income proof",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RecurringIncomeProof" } } }
+          },
+          "401": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/proofs/recurring-income/analyze-coverage": {
+      "post": {
+        "tags": ["proofs"],
+        "operationId": "analyzeRecurringIncomeCoverage",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Coverage analysis",
+            "content": { "application/json": { "schema": { "type": "object" } } }
+          },
+          "401": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/proofs/{id}/verify": {
+      "get": {
+        "tags": ["proofs"],
+        "operationId": "verifyProof",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": {
+            "description": "Verification",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/VerifyProofResponse" } } }
+          }
+        }
+      }
+    },
+    "/issuers": {
+      "get": {
+        "tags": ["issuers"],
+        "operationId": "listIssuers",
+        "responses": {
+          "200": {
+            "description": "Issuers",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Issuer" } }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["issuers"],
+        "operationId": "createIssuer",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object" } } }
+        },
+        "responses": {
+          "201": {
+            "description": "Issuer",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Issuer" } } }
+          },
+          "401": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/issuers/{id}": {
+      "get": {
+        "tags": ["issuers"],
+        "operationId": "getIssuer",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": {
+            "description": "Issuer",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Issuer" } } }
+          },
+          "404": { "$ref": "#/components/responses/Error" }
+        }
+      },
+      "patch": {
+        "tags": ["issuers"],
+        "operationId": "updateIssuer",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Issuer",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Issuer" } } }
+          },
+          "401": { "$ref": "#/components/responses/Error" },
+          "404": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/organizations": {
+      "get": {
+        "tags": ["organizations"],
+        "operationId": "listOrganizations",
+        "responses": {
+          "200": {
+            "description": "Organizations",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Organization" } }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["organizations"],
+        "operationId": "createOrganization",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object" } } }
+        },
+        "responses": {
+          "201": {
+            "description": "Organization",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Organization" } } }
+          },
+          "401": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/organizations/{id}": {
+      "get": {
+        "tags": ["organizations"],
+        "operationId": "getOrganization",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": {
+            "description": "Organization",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Organization" } } }
+          },
+          "401": { "$ref": "#/components/responses/Error" },
+          "404": { "$ref": "#/components/responses/Error" }
+        }
+      },
+      "patch": {
+        "tags": ["organizations"],
+        "operationId": "updateOrganization",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Organization",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Organization" } } }
+          },
+          "401": { "$ref": "#/components/responses/Error" },
+          "404": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api-keys": {
+      "get": {
+        "tags": ["api-keys"],
+        "operationId": "listApiKeys",
+        "responses": {
+          "200": {
+            "description": "API keys",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/ApiKey" } }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Error" }
+        }
+      },
+      "post": {
+        "tags": ["api-keys"],
+        "operationId": "createApiKey",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object" } } }
+        },
+        "responses": {
+          "201": {
+            "description": "API key",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiKey" } } }
+          },
+          "401": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api-keys/{id}/rotate": {
+      "post": {
+        "tags": ["api-keys"],
+        "operationId": "rotateApiKey",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "201": {
+            "description": "API key",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiKey" } } }
+          },
+          "401": { "$ref": "#/components/responses/Error" },
+          "404": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api-keys/{id}": {
+      "delete": {
+        "tags": ["api-keys"],
+        "operationId": "revokeApiKey",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "204": { "description": "API key revoked" },
+          "401": { "$ref": "#/components/responses/Error" },
+          "404": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/webhooks": {
+      "post": {
+        "tags": ["webhooks"],
+        "operationId": "createWebhook",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateWebhookRequest" } } }
+        },
+        "responses": {
+          "201": {
+            "description": "Webhook",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Webhook" } } }
+          },
+          "401": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "responses": {
+      "Error": {
+        "description": "Error",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+      }
+    },
+    "schemas": {
+      "HealthResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "service", "database", "timestamp"],
+        "properties": {
+          "status": { "type": "string", "example": "ok" },
+          "service": { "type": "string", "example": "earnproof-api" },
+          "database": { "type": "string", "enum": ["ok", "error"], "example": "ok" },
+          "timestamp": { "type": "string", "format": "date-time", "example": "2026-08-16T00:00:00.000Z" }
+        }
+      },
+      "CreateChallengeRequest": {
+        "type": "object",
+        "required": ["walletAddress"],
+        "properties": {
+          "walletAddress": { "type": "string", "example": "GDXSYNTHETICFIXTUREWALLET00000000000000000000000000000A" }
+        }
+      },
+      "AuthChallengeResponse": {
+        "type": "object",
+        "required": ["id", "message", "expiresAt"],
+        "properties": {
+          "id": { "type": "string", "example": "fixture-challenge-1" },
+          "message": { "type": "string", "example": "EarnProof wallet authentication" },
+          "expiresAt": { "type": "string", "format": "date-time", "example": "2026-08-16T00:05:00.000Z" }
+        }
+      },
+      "VerifyChallengeRequest": {
+        "type": "object",
+        "required": ["challengeId", "walletAddress", "signature"],
+        "properties": {
+          "challengeId": { "type": "string", "example": "fixture-challenge-1" },
+          "walletAddress": { "type": "string", "example": "GDXSYNTHETICFIXTUREWALLET00000000000000000000000000000A" },
+          "signature": { "type": "string", "example": "fixture-signature" }
+        }
+      },
+      "AuthUser": {
+        "type": "object",
+        "required": ["id", "walletAddress", "walletHash", "role"],
+        "properties": {
+          "id": { "type": "string", "example": "fixture-user-1" },
+          "walletAddress": { "type": "string", "example": "GDXSYNTHETICFIXTUREWALLET00000000000000000000000000000A" },
+          "walletHash": { "type": "string", "example": "sha256:fixture-wallet-hash-0001" },
+          "role": { "type": "string", "enum": ["WORKER", "ISSUER", "ADMIN", "DEVELOPER", "worker"] }
+        }
+      },
+      "AuthSession": {
+        "type": "object",
+        "required": ["token", "tokenType"],
+        "properties": {
+          "token": { "type": "string", "example": "fixture-session-token" },
+          "tokenType": { "type": "string", "example": "Bearer" },
+          "sessionId": { "type": "string", "example": "fixture-session-1" },
+          "expiresAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "AuthVerifyResponse": {
+        "type": "object",
+        "required": ["user", "session"],
+        "properties": {
+          "user": { "$ref": "#/components/schemas/AuthUser" },
+          "session": { "$ref": "#/components/schemas/AuthSession" }
+        }
+      },
+      "PaymentClassification": {
+        "type": "string",
+        "enum": ["INCOME", "REIMBURSEMENT", "PERSONAL_TRANSFER", "UNKNOWN", "EXCLUDED"]
+      },
+      "Payment": {
+        "type": "object",
+        "required": [
+          "id",
+          "stellarTransactionHash",
+          "sourceAddress",
+          "assetCode",
+          "occurredAt",
+          "classification",
+          "isEligible"
+        ],
+        "properties": {
+          "id": { "type": "string", "example": "fixture-payment-1" },
+          "stellarTransactionHash": { "type": "string", "example": "aaaaaaaa00000000000000000000000000000000000000000000000000aa" },
+          "operationId": { "type": "string", "example": "123456789012345" },
+          "sourceAddress": { "type": "string", "example": "GDXSYNTHETICFIXTURESOURCE000000000000000000000000000001" },
+          "destinationAddress": { "type": "string" },
+          "assetCode": { "type": "string", "example": "USDC" },
+          "assetIssuer": { "type": "string", "nullable": true, "example": "GDXSYNTHETICFIXTUREISSUER00000000000000000000000000000B" },
+          "occurredAt": { "type": "string", "format": "date-time", "example": "2026-08-01T12:00:00.000Z" },
+          "classification": { "$ref": "#/components/schemas/PaymentClassification" },
+          "isEligible": { "type": "boolean", "example": true }
+        }
+      },
+      "PaymentSyncResult": {
+        "type": "object",
+        "properties": {
+          "created": { "type": "integer", "example": 0 },
+          "updated": { "type": "integer", "example": 0 },
+          "skipped": { "type": "integer", "example": 0 }
+        }
+      },
+      "UpdatePaymentClassificationRequest": {
+        "type": "object",
+        "required": ["classification"],
+        "properties": {
+          "classification": { "$ref": "#/components/schemas/PaymentClassification" }
+        }
+      },
+      "CreateMinimumIncomeProofRequest": {
+        "type": "object",
+        "required": ["selectedPaymentIds", "thresholdAmount", "assetCode", "periodStart", "periodEnd"],
+        "properties": {
+          "selectedPaymentIds": { "type": "array", "items": { "type": "string" } },
+          "thresholdAmount": { "type": "string", "example": "100" },
+          "assetCode": { "type": "string", "example": "USDC" },
+          "assetIssuer": { "type": "string" },
+          "periodStart": { "type": "string", "format": "date-time" },
+          "periodEnd": { "type": "string", "format": "date-time" },
+          "expiresInDays": { "type": "integer", "example": 30 }
+        }
+      },
+      "SignedCredential": {
+        "type": "object",
+        "required": ["id", "schemaVersion", "subject", "claim", "privacy", "issuedAt", "expiresAt", "proof"],
+        "properties": {
+          "id": { "type": "string", "example": "EP-FIXT-0001" },
+          "type": { "type": "string" },
+          "schemaVersion": { "type": "string", "example": "1.0" },
+          "issuer": { "type": "string" },
+          "subject": {
+            "type": "object",
+            "required": ["walletHash"],
+            "properties": { "walletHash": { "type": "string", "example": "sha256:fixture-wallet-hash-0001" } }
+          },
+          "claim": {
+            "type": "object",
+            "required": ["operator", "thresholdAmount", "assetCode", "periodStart", "periodEnd", "qualifyingPaymentCount"],
+            "properties": {
+              "operator": { "type": "string", "enum": ["gte"] },
+              "thresholdAmount": { "type": "string", "example": "100" },
+              "assetCode": { "type": "string", "example": "USDC" },
+              "assetIssuer": { "type": "string", "nullable": true },
+              "periodStart": { "type": "string", "format": "date-time" },
+              "periodEnd": { "type": "string", "format": "date-time" },
+              "qualifyingPaymentCount": { "type": "integer", "example": 1 }
+            }
+          },
+          "privacy": {
+            "type": "object",
+            "required": ["exactIncomeHidden", "sourceTransactionsHidden"],
+            "properties": {
+              "exactIncomeHidden": { "type": "boolean", "example": true },
+              "sourceTransactionsHidden": { "type": "boolean", "example": true }
+            }
+          },
+          "issuedAt": { "type": "string", "format": "date-time" },
+          "expiresAt": { "type": "string", "format": "date-time" },
+          "proof": {
+            "type": "object",
+            "required": ["type", "credentialHash", "signature"],
+            "properties": {
+              "type": { "type": "string", "example": "HMAC-SHA256" },
+              "credentialHash": { "type": "string", "example": "sha256:fixture-hash" },
+              "signature": { "type": "string", "example": "hmac-sha256:fixture-sig" }
+            }
+          }
+        }
+      },
+      "ProofSummary": {
+        "type": "object",
+        "required": ["id", "type", "schemaVersion", "network", "issuedAt", "expiresAt"],
+        "properties": {
+          "id": { "type": "string", "example": "EP-FIXT-0001" },
+          "type": { "type": "string" },
+          "schemaVersion": { "type": "string", "example": "1.0" },
+          "network": { "type": "string", "example": "testnet" },
+          "issuedAt": { "type": "string", "format": "date-time" },
+          "expiresAt": { "type": "string", "format": "date-time" },
+          "revokedAt": { "type": "string", "nullable": true }
+        }
+      },
+      "VerifyProofResponse": {
+        "type": "object",
+        "required": ["result", "status"],
+        "properties": {
+          "result": {
+            "type": "string",
+            "enum": ["VALID", "EXPIRED", "REVOKED", "INVALID_SIGNATURE", "UNKNOWN_PROOF", "UNVERIFIED_ISSUER"]
+          },
+          "status": { "type": "string", "enum": ["valid", "expired", "revoked", "unknown", "invalid"] },
+          "credential": { "$ref": "#/components/schemas/SignedCredential" },
+          "proof": { "$ref": "#/components/schemas/ProofSummary" }
+        }
+      },
+      "ProofCreated": {
+        "type": "object",
+        "required": ["proofId", "status", "verificationUrl", "credential"],
+        "properties": {
+          "proofId": { "type": "string", "example": "EP-FIXT-0001" },
+          "status": { "type": "string", "example": "issued" },
+          "verificationUrl": { "type": "string", "example": "https://app.earnproof.example/verify?proof=EP-FIXT-0001" },
+          "credential": { "$ref": "#/components/schemas/SignedCredential" }
+        }
+      },
+      "RecurringIncomeProof": {
+        "type": "object",
+        "required": ["proofId", "status", "verificationUrl", "credential"],
+        "properties": {
+          "proofId": { "type": "string", "example": "EP-FIXT-RECURRING-0001" },
+          "status": { "type": "string", "example": "issued" },
+          "verificationUrl": { "type": "string", "example": "https://app.earnproof.example/verify?proof=EP-FIXT-RECURRING-0001" },
+          "credential": { "$ref": "#/components/schemas/SignedCredential" }
+        }
+      },
+      "Issuer": {
+        "type": "object",
+        "required": ["id", "name", "status"],
+        "properties": {
+          "id": { "type": "string", "example": "fixture-issuer-1" },
+          "name": { "type": "string", "example": "Synthetic Test Issuer" },
+          "status": { "type": "string", "enum": ["ACTIVE", "PENDING", "SUSPENDED", "REVOKED"] },
+          "organizationId": { "type": "string", "example": "fixture-org-1" }
+        }
+      },
+      "Organization": {
+        "type": "object",
+        "required": ["id", "name", "slug", "status"],
+        "properties": {
+          "id": { "type": "string", "example": "fixture-org-1" },
+          "name": { "type": "string", "example": "Synthetic Test Organization" },
+          "slug": { "type": "string", "example": "synthetic-org" },
+          "website": { "type": "string", "nullable": true, "example": "https://example.invalid" },
+          "status": { "type": "string", "enum": ["ACTIVE", "PENDING", "SUSPENDED", "REVOKED", "DELETED"] }
+        }
+      },
+      "ApiKey": {
+        "type": "object",
+        "required": ["id", "name", "prefix", "scopes"],
+        "properties": {
+          "id": { "type": "string", "example": "fixture-api-key-1" },
+          "name": { "type": "string", "example": "Reporting integration" },
+          "prefix": { "type": "string", "example": "epk_test" },
+          "scopes": { "type": "array", "items": { "type": "string" }, "example": ["proofs:read"] },
+          "expiresAt": { "type": "string", "nullable": true }
+        }
+      },
+      "CreateWebhookRequest": {
+        "type": "object",
+        "required": ["url", "events"],
+        "properties": {
+          "url": { "type": "string", "example": "https://example.invalid/webhooks/earnproof" },
+          "events": {
+            "type": "array",
+            "items": { "type": "string", "enum": ["proof.created", "proof.verified", "proof.revoked"] }
+          }
+        }
+      },
+      "Webhook": {
+        "type": "object",
+        "required": ["id", "url", "events", "status"],
+        "properties": {
+          "id": { "type": "string", "example": "fixture-webhook-1" },
+          "url": { "type": "string", "example": "https://example.invalid/webhooks/earnproof" },
+          "events": { "type": "array", "items": { "type": "string" } },
+          "status": { "type": "string", "enum": ["ACTIVE", "DISABLED"] }
+        }
+      },
+      "ApiError": {
+        "type": "object",
+        "required": ["statusCode", "code", "message", "requestId"],
+        "properties": {
+          "statusCode": { "type": "integer", "example": 401 },
+          "code": {
+            "type": "string",
+            "enum": [
+              "VALIDATION_ERROR",
+              "INVALID_INPUT",
+              "MISSING_TOKEN",
+              "INVALID_TOKEN",
+              "EXPIRED_TOKEN",
+              "INVALID_CREDENTIALS",
+              "SESSION_EXPIRED",
+              "FORBIDDEN",
+              "NOT_FOUND",
+              "PAYMENT_NOT_FOUND",
+              "PAYMENT_NOT_ELIGIBLE",
+              "PAYMENT_EXCLUDED",
+              "CONFLICT",
+              "TOO_MANY_REQUESTS",
+              "DEPENDENCY_UNAVAILABLE",
+              "INTERNAL_ERROR"
+            ]
+          },
+          "message": { "type": "string", "example": "Authentication token is invalid." },
+          "requestId": { "type": "string", "example": "fixture-request-1" },
+          "violations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["field", "message"],
+              "properties": {
+                "field": { "type": "string" },
+                "message": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

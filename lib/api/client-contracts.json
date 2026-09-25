@@ -1,0 +1,96 @@
+[
+  {
+    "module": "lib/health-check.ts",
+    "schema": "HealthResponse",
+    "required": ["status", "service", "database", "timestamp"],
+    "routes": ["GET /health"]
+  },
+  {
+    "module": "components/proofs/create-proof-flow.tsx",
+    "schema": "AuthChallengeResponse",
+    "required": ["id", "message", "expiresAt"],
+    "routes": ["POST /auth/challenge"]
+  },
+  {
+    "module": "components/proofs/create-proof-flow.tsx",
+    "schema": "AuthVerifyResponse",
+    "required": ["user", "session"],
+    "routes": ["POST /auth/verify"]
+  },
+  {
+    "module": "components/proofs/create-proof-flow.tsx",
+    "schema": "Payment",
+    "required": [
+      "id",
+      "stellarTransactionHash",
+      "sourceAddress",
+      "assetCode",
+      "occurredAt",
+      "classification",
+      "isEligible"
+    ],
+    "enums": {
+      "classification": ["INCOME", "REIMBURSEMENT", "PERSONAL_TRANSFER", "UNKNOWN", "EXCLUDED"]
+    },
+    "routes": ["GET /payments", "POST /payments/sync", "PATCH /payments/{id}/classification"]
+  },
+  {
+    "module": "components/proofs/create-proof-flow.tsx",
+    "schema": "ProofCreated",
+    "required": ["proofId", "status", "verificationUrl", "credential"],
+    "routes": ["POST /proofs/minimum-income", "POST /proofs/payment-receipt", "POST /proofs/recurring-income"]
+  },
+  {
+    "module": "components/verification/verification-panel.tsx",
+    "schema": "VerifyProofResponse",
+    "required": ["result", "status"],
+    "enums": {
+      "result": [
+        "VALID",
+        "EXPIRED",
+        "REVOKED",
+        "INVALID_SIGNATURE",
+        "UNKNOWN_PROOF",
+        "UNVERIFIED_ISSUER"
+      ],
+      "status": ["valid", "expired", "revoked", "unknown", "invalid"]
+    },
+    "routes": ["GET /proofs/{id}/verify"]
+  },
+  {
+    "module": "lib/api/issuers.ts",
+    "schema": "Issuer",
+    "required": ["id", "name", "status"],
+    "routes": ["GET /issuers", "GET /issuers/{id}", "POST /issuers", "PATCH /issuers/{id}"]
+  },
+  {
+    "module": "lib/api/organizations.ts",
+    "schema": "Organization",
+    "required": ["id", "name", "slug", "status"],
+    "routes": ["GET /organizations", "GET /organizations/{id}", "POST /organizations", "PATCH /organizations/{id}"]
+  },
+  {
+    "module": "lib/api/recurring-income-proofs.ts",
+    "schema": "RecurringIncomeProof",
+    "required": ["proofId", "status", "verificationUrl", "credential"],
+    "routes": ["POST /proofs/recurring-income", "POST /proofs/recurring-income/analyze-coverage"]
+  },
+  {
+    "module": "lib/api/keys.ts",
+    "schema": "ApiKey",
+    "required": ["id", "name", "prefix", "scopes"],
+    "routes": ["GET /api-keys", "POST /api-keys", "POST /api-keys/{id}/rotate", "DELETE /api-keys/{id}"]
+  },
+  {
+    "module": "lib/api/client.ts",
+    "schema": "Webhook",
+    "required": ["id", "url", "events", "status"],
+    "routes": ["POST /webhooks"]
+  },
+  {
+    "module": "lib/api/client.ts",
+    "schema": "ApiError",
+    "required": ["statusCode", "code", "message", "requestId"],
+    "routes": ["POST /auth/verify"]
+  }
+]

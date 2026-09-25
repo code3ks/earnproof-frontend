@@ -1,0 +1,9 @@
+{
+  "unapprovedInlineScript": "<script>alert(1)</script>",
+  "unapprovedConnectOrigin": "https://evil.example",
+  "unapprovedFrame": "https://framing.example",
+  "javascriptHref": "javascript:alert(1)",
+  "dataHref": "data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==",
+  "fileHref": "file:///etc/passwd",
+  "trustedHelp": "https://help.earnproof.com/verify"
+}

@@ -1,0 +1,29 @@
+{
+  "cases": [
+    {
+      "name": "javascript-url",
+      "raw": "javascript:alert(1)",
+      "reason": "unsafe-scheme"
+    },
+    {
+      "name": "data-url",
+      "raw": "data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==",
+      "reason": "unsafe-scheme"
+    },
+    {
+      "name": "file-url",
+      "raw": "file:///etc/passwd",
+      "reason": "unsafe-scheme"
+    },
+    {
+      "name": "external-https",
+      "raw": "https://evil.example/verify?proof=ep_7F3A",
+      "reason": "origin-mismatch"
+    },
+    {
+      "name": "open-redirect-path",
+      "raw": "https://app.earnproof.example/logout",
+      "reason": "route-mismatch"
+    }
+  ]
+}

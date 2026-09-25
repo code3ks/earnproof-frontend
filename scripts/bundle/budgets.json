@@ -1,0 +1,128 @@
+{
+  "$comment": "Bundle composition budgets for the client (browser) bundle. Read scripts/bundle/README.md before changing anything here: every route budget needs a non-empty reason and an ISO reviewedOn date, and ANY edit to this file invalidates baseline.json until `npm run bundle:baseline` is re-run and committed in the same pull request.",
+  "defaults": {
+    "clientJsBytes": 640000
+  },
+  "significantChange": {
+    "minBytes": 5120,
+    "minPercent": 2
+  },
+  "allowedClientPackages": [
+    "@stellar/freighter-api",
+    "@swc/helpers",
+    "next",
+    "react-hook-form",
+    "zod"
+  ],
+  "ownerAliases": {
+    "webpack://freighterApi/": "@stellar/freighter-api"
+  },
+  "serverOnlyPolicy": {
+    "serverOnlyPackages": [],
+    "serverOnlyPathPatterns": ["(^|/)server-only(/|$)", "(^|/)\\.env(\\.|$)"],
+    "secretPatterns": [
+      "-----BEGIN [A-Z ]*PRIVATE KEY-----",
+      "\\bSECRET_[A-Z0-9_]+\\s*=",
+      "\\b[Ss]tellar[Ss]ecret\\b"
+    ],
+    "allowedClientEnv": [],
+    "envScanKinds": ["first-party"]
+  },
+  "routes": {
+    "/": {
+      "clientJsBytes": 610000,
+      "reason": "Marketing home page: the shared app-router client runtime plus the public shell only. Budget is the measured 2026-08-28 baseline (598746 B) plus ~2% headroom for framework patch bumps.",
+      "reviewedOn": "2026-08-28"
+    },
+    "/about": {
+      "clientJsBytes": 610000,
+      "reason": "Static content route sharing the public shell with / and carrying no route-specific client code.",
+      "reviewedOn": "2026-08-28"
+    },
+    "/contact": {
+      "clientJsBytes": 620000,
+      "reason": "Adds the interactive contact form client component (~6 KB over the static-content routes).",
+      "reviewedOn": "2026-08-28"
+    },
+    "/developers": {
+      "clientJsBytes": 610000,
+      "reason": "Static content route sharing the public shell with / and carrying no route-specific client code.",
+      "reviewedOn": "2026-08-28"
+    },
+    "/developers/api-keys": {
+      "clientJsBytes": 970000,
+      "reason": "Authenticated API-key management route: form validation loads react-hook-form and zod intentionally, isolated from public marketing routes.",
+      "reviewedOn": "2026-09-02"
+    },
+    "/faq": {
+      "clientJsBytes": 625000,
+      "reason": "Ships the FAQ data module and its interactive disclosure components on top of the public shell.",
+      "reviewedOn": "2026-08-28"
+    },
+    "/how-it-works": {
+      "clientJsBytes": 610000,
+      "reason": "Static content route sharing the public shell with / and carrying no route-specific client code.",
+      "reviewedOn": "2026-08-28"
+    },
+    "/issuers": {
+      "clientJsBytes": 610000,
+      "reason": "Static content route sharing the public shell with / and carrying no route-specific client code.",
+      "reviewedOn": "2026-08-28"
+    },
+    "/privacy": {
+      "clientJsBytes": 610000,
+      "reason": "Static content route sharing the public shell with / and carrying no route-specific client code.",
+      "reviewedOn": "2026-08-28"
+    },
+    "/proofs": {
+      "clientJsBytes": 650000,
+      "reason": "Proof creation flow plus the credential export helpers. @stellar/freighter-api is loaded on demand and is deliberately NOT part of this route's first load - the allowlist, not this number, is what keeps it that way.",
+      "reviewedOn": "2026-09-02"
+    },
+    "/proofs/payment-receipt": {
+      "clientJsBytes": 950000,
+      "reason": "Authenticated payment-receipt proof route: client-side form validation loads zod intentionally for submission safety.",
+      "reviewedOn": "2026-09-02"
+    },
+    "/proofs/recurring-income": {
+      "clientJsBytes": 960000,
+      "reason": "Authenticated recurring-income proof route: interval and payment validation load zod intentionally for submission safety.",
+      "reviewedOn": "2026-09-02"
+    },
+    "/status": {
+      "clientJsBytes": 635000,
+      "reason": "Adds the health-check client module and the network badge to the public shell.",
+      "reviewedOn": "2026-09-02"
+    },
+    "/settings/issuers": {
+      "clientJsBytes": 965000,
+      "reason": "Authenticated issuer-management route: form validation loads react-hook-form and zod intentionally, isolated from public routes.",
+      "reviewedOn": "2026-09-02"
+    },
+    "/settings/organizations": {
+      "clientJsBytes": 970000,
+      "reason": "Authenticated organization-management route: form validation loads react-hook-form and zod intentionally, isolated from public routes.",
+      "reviewedOn": "2026-09-02"
+    },
+    "/terms": {
+      "clientJsBytes": 610000,
+      "reason": "Static content route sharing the public shell with / and carrying no route-specific client code.",
+      "reviewedOn": "2026-08-28"
+    },
+    "/verify": {
+      "clientJsBytes": 650000,
+      "reason": "Public verification entry point: verification panel, proof form and QR payload validation.",
+      "reviewedOn": "2026-09-02"
+    },
+    "/verify/credential": {
+      "clientJsBytes": 645000,
+      "reason": "Credential verification form plus the disclosure rendering used by the verification panel.",
+      "reviewedOn": "2026-09-02"
+    },
+    "/verify/scan": {
+      "clientJsBytes": 631000,
+      "reason": "Camera scan surface plus the QR payload validator and the new scanner lifecycle state machine (improved error handling, resource leak prevention, device disconnect detection). No scanner library ships in first load.",
+      "reviewedOn": "2026-09-23"
+    }
+  }
+}

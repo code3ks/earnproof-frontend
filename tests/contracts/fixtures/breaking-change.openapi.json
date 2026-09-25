@@ -1,0 +1,6 @@
+{
+  "description": "Seeded breaking change: a required health field is removed from the contract.",
+  "schema": "HealthResponse",
+  "removeField": "timestamp",
+  "owningModule": "lib/health-check.ts"
+}

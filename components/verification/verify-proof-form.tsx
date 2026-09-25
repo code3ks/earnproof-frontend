@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { apiClient } from "@/lib/api/client";
 import { ErrorReference } from "@/components/common/error-reference";
@@ -8,6 +8,8 @@ import {
   VerificationPanel,
   VerifyProofResponse,
 } from "@/components/verification/verification-panel";
+import { VerifyResultSkeleton } from "@/components/common/skeleton/verify-result-skeleton";
+import { extractProofId } from "@/lib/validation/proof-input";
 
 export function VerifyProofForm() {
   const searchParams = useSearchParams();
@@ -15,8 +17,15 @@ export function VerifyProofForm() {
   const [result, setResult] = useState<VerifyProofResponse | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const errorRef = useRef<HTMLParagraphElement>(null);
 
   const proofId = useMemo(() => extractProofId(input), [input]);
+
+  useEffect(() => {
+    if (error) {
+      errorRef.current?.focus();
+    }
+  }, [error]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -65,17 +74,22 @@ export function VerifyProofForm() {
         <label className="grid gap-[7px] text-xs font-semibold text-slate-300">
           Verification method
           <input
-            className="h-[46px] rounded-lg border border-white/15 bg-transparent px-3 text-sm font-normal text-slate-500"
+            className="h-[46px] rounded-lg border border-white/15 bg-transparent px-3 text-sm font-normal text-slate-400"
             disabled
             value="Public proof link"
           />
         </label>
-        <div className="rounded-lg border border-cyan-300/30 bg-cyan-300/10 p-3 text-sm leading-5">
+        <div className="rounded-lg border border-cyan-300/50 bg-cyan-300/10 p-3 text-sm leading-5">
           <p className="font-medium text-cyan-200">Privacy protected</p>
           <p className="mt-1.5 text-slate-300">Only the fields shown in the disclosure summary can be shared.</p>
         </div>
-        {error ? <ErrorReference error={error} /> : null}
+        {error ? (
+          <div ref={errorRef} tabIndex={-1} className="focus-visible:outline-none">
+            <ErrorReference error={error} />
+          </div>
+        ) : null}
         <button
+          aria-describedby={error ? "verify-proof-error" : undefined}
           className="h-11 w-fit rounded-lg bg-cyan-300 px-6 text-sm font-medium text-slate-950 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 sm:h-10"
           disabled={isLoading}
           type="submit"
@@ -84,22 +98,7 @@ export function VerifyProofForm() {
         </button>
       </form>
 
-      <VerificationPanel result={result} />
+      {isLoading ? <VerifyResultSkeleton /> : <VerificationPanel result={result} />}
     </div>
   );
-}
-
-function extractProofId(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return null;
-  }
-
-  try {
-    const url = new URL(trimmed);
-    const match = url.pathname.match(/\/proofs\/([^/]+)(?:\/verify)?$/);
-    return match?.[1] ?? null;
-  } catch {
-    return trimmed;
-  }
 }

@@ -1,0 +1,23 @@
+{
+  "description": "Synthetic scan states. Raster decode is not available in Jest; these fixtures model what BarcodeDetector would return after blur/rotation.",
+  "blurred": {
+    "codes": [],
+    "outcome": "unreadable"
+  },
+  "rotated": {
+    "codes": ["https://app.earnproof.example/verify?proof=EP-8A42-91DC"],
+    "outcome": "accepted",
+    "proofId": "EP-8A42-91DC"
+  },
+  "multiple": {
+    "codes": [
+      "https://app.earnproof.example/verify?proof=EP-8A42-91DC",
+      "https://app.earnproof.example/verify?proof=EP-8A42-91DD"
+    ],
+    "outcome": "multiple-codes"
+  },
+  "oversized": {
+    "rawPrefix": "https://app.earnproof.example/verify?proof=",
+    "outcome": "oversized"
+  }
+}
