@@ -1,6 +1,10 @@
+/**
+ * @jest-environment jsdom
+ */
+
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
-import { ErrorReference } from "./error-reference";
+import { ErrorReference } from "@/components/common/error-reference";
 import { ApiError } from "@/lib/errors";
 
 // Mock clipboard API

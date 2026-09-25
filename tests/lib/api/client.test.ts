@@ -1,5 +1,26 @@
-import { apiClient } from "./client";
+/**
+ * @jest-environment jsdom
+ */
+
+import { apiClient } from "@/lib/api/client";
 import { ApiError } from "@/lib/errors";
+
+// Mock telemetry and network modules
+jest.mock("@/lib/telemetry", () => ({
+  categorizeError: jest.fn(() => "network_error"),
+  reportClientError: jest.fn(),
+}));
+
+jest.mock("@/lib/network", () => ({
+  ApiNetworkError: class ApiNetworkError extends Error {
+    constructor(error: unknown, public response?: Response) {
+      super(error instanceof Error ? error.message : String(error));
+      this.name = "ApiNetworkError";
+    }
+  },
+  recordNetworkFailure: jest.fn(),
+  recordNetworkSuccess: jest.fn(),
+}));
 
 // Mock fetch globally
 global.fetch = jest.fn();
