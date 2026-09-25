@@ -1,4 +1,5 @@
 import { appConfig } from "@/config/app";
+import { ApiError, extractSafeErrorReference } from "@/lib/errors";
 
 type ApiClientOptions = RequestInit & {
   path: string;
@@ -18,7 +19,16 @@ export async function apiClient<TResponse>({
   });
 
   if (!response.ok) {
-    throw new Error(`EarnProof API request failed with ${response.status}`);
+    let errorBody: unknown;
+    try {
+      errorBody = await response.json();
+    } catch {
+      // If response body is not JSON, use empty object
+      errorBody = {};
+    }
+
+    const errorResponse = extractSafeErrorReference(errorBody, response.status);
+    throw new ApiError(errorResponse);
   }
 
   return response.json() as Promise<TResponse>;
