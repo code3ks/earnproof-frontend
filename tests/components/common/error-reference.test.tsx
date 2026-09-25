@@ -3,23 +3,19 @@
  */
 
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import "@testing-library/jest-dom";
 import { ErrorReference } from "@/components/common/error-reference";
 import { ApiError } from "@/lib/errors";
 
 // Mock clipboard API
-const mockClipboard = {
-  writeText: jest.fn(),
-};
-
 Object.assign(navigator, {
-  clipboard: mockClipboard,
+  clipboard: {
+    writeText: jest.fn().mockResolvedValue(undefined),
+  },
 });
 
 describe("ErrorReference", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockClipboard.writeText.mockResolvedValue(undefined);
   });
 
   describe("ApiError with request IDs", () => {
@@ -114,7 +110,7 @@ describe("ErrorReference", () => {
       fireEvent.click(copyButton);
 
       await waitFor(() => {
-        expect(mockClipboard.writeText).toHaveBeenCalledWith(
+        expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
           "Request ID: req-12345678"
         );
       });
@@ -136,7 +132,7 @@ describe("ErrorReference", () => {
       fireEvent.click(copyButton);
 
       await waitFor(() => {
-        expect(mockClipboard.writeText).toHaveBeenCalledWith(
+        expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
           "Request ID: req-abc123\nCorrelation ID: corr-xyz789"
         );
       });
@@ -193,7 +189,7 @@ describe("ErrorReference", () => {
     });
 
     it("handles clipboard API failure gracefully", async () => {
-      mockClipboard.writeText.mockRejectedValueOnce(
+      (navigator.clipboard.writeText as jest.Mock).mockRejectedValueOnce(
         new Error("Clipboard access denied")
       );
 

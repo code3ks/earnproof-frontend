@@ -1,4 +1,4 @@
-import { extractSafeErrorReference } from "./extract";
+import { extractSafeErrorReference } from "@/lib/errors/extract";
 
 describe("extractSafeErrorReference", () => {
   describe("positive cases - valid identifiers", () => {
