@@ -1,5 +1,18 @@
-import { apiClient, bearer, retryMutation } from "./client";
-import type { PaymentSyncResult } from "./generated/v1";
+import { apiClient, bearer, retryRead, retryMutation } from "./client";
+import type { Payment, PaymentSyncResult } from "./generated/v1";
+
+export type { Payment };
+
+export async function listPayments(token: string, signal: AbortSignal): Promise<Payment[]> {
+  return retryRead(async (signal) => {
+    return apiClient<Payment[]>({
+      path: "/payments",
+      method: "GET",
+      headers: bearer(token),
+      signal,
+    });
+  }, signal);
+}
 
 /**
  * Triggers a payment synchronization pass (#138). `POST /payments/sync`
@@ -12,6 +25,12 @@ import type { PaymentSyncResult } from "./generated/v1";
  * (no-op / partial / full) from these counts, but cannot resume a sync
  * from a server-provided checkpoint mid-run, only retry the whole
  * operation.
+ *
+ * POST /payments/sync (#171). The real endpoint takes no parameters and
+ * runs a full, unbounded, synchronous sync — it has no concept of a ledger
+ * range, a queued/async job, or resumable progress. See
+ * lib/payment-backfill/store.ts for how the bounded-range request/job
+ * lifecycle this issue asks for is layered on top of this call.
  */
 export async function syncPayments(token: string, signal: AbortSignal): Promise<PaymentSyncResult> {
   return retryMutation(async (signal) => {

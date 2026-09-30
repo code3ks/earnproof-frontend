@@ -8,9 +8,9 @@ export default function TrustedSourcesPage() {
     <PublicShell>
       <section className={`${pageContainer} gap-8 sm:gap-10`}>
         <PageHeading
-          description="Configure and verify trusted sources before enabling them for income and payment verification."
+          description="Manage trusted sources and their linked issuer identities."
           eyebrow="Administration"
-          title="Trusted Sources"
+          title="Trusted Source Management"
         />
         <TrustedSourceManagement />
       </section>

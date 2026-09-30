@@ -1,20 +1,22 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { canPerformIssuerTransition, updateIssuer, formatIssuerStatus, getIssuerStatusTone } from "@/lib/api/issuers";
+import { canPerformIssuerTransition, updateIssuer, formatIssuerStatus, getIssuerStatusTone, getIssuer } from "@/lib/api/issuers";
 import { ConfirmationDialog } from "@/components/common/confirmation-dialog";
 import { EditIssuerForm } from "@/components/issuers/edit-issuer-form";
-import { updateIssuer, formatIssuerStatus, getIssuerStatusTone, getIssuer } from "@/lib/api/issuers";
-import { ConfirmationDialog } from "@/components/common/confirmation-dialog";
 import { CursorPagination, type PaginationState } from "@/components/common/cursor-pagination";
 import { ResultsHeading } from "@/components/common/results-heading";
 import { ResolveConflictDialog } from "@/components/forms/resolve-conflict-dialog";
 import { StatusBadge } from "@/components/common/production-ui";
+import { IssuerAttestations } from "@/components/issuers/issuer-attestations";
 import { formatMessage } from "@/lib/i18n";
 import { ApiConflictError } from "@/lib/api/client";
 import { useConflictResolution } from "@/hooks/use-conflict-resolution";
 import type { IssuerWithRevision } from "@/lib/api/issuers";
 import type { Organization } from "@/lib/api/generated/v1";
+import { RecentAuthGate } from "@/components/common/recent-auth-gate";
+import { useRecentAuth } from "@/lib/auth/recent-auth";
+import { signWithFreighter } from "@/lib/wallet/sign-message";
 
 const issuerActionLabels = {
   suspend: "Suspend",
@@ -27,6 +29,7 @@ export function IssuerList({
   organizations,
   loading,
   token,
+  walletAddress,
   role,
   paginationState,
   onPreviousPage,
@@ -38,22 +41,28 @@ export function IssuerList({
   organizations: Organization[];
   loading: boolean;
   token: string;
+  walletAddress: string;
   role: string | undefined;
   paginationState: PaginationState;
   onPreviousPage: () => void;
   onNextPage: () => void;
   focusResults: boolean;
-  onIssuerUpdated: (issuer: Issuer) => void;
   onIssuerUpdated: (issuer: IssuerWithRevision) => void;
 }) {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editingIssuerId, setEditingIssuerId] = useState<string | null>(null);
+  const [expandedAttestationsId, setExpandedAttestationsId] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<{
     type: "suspend" | "activate" | "revoke";
     issuerId: string;
     issuerName: string;
   } | null>(null);
+  const [pendingIssuerName, setPendingIssuerName] = useState<string | null>(null);
+  const recentAuth = useRecentAuth({
+    walletAddress,
+    signMessage: (message) => signWithFreighter(message, walletAddress),
+  });
 
   const {
     conflict,
@@ -87,9 +96,9 @@ export function IssuerList({
         const updated = await updateIssuer(
           token,
           confirmAction.issuerId,
-          { 
+          {
             status: statusMap[confirmAction.type],
-            __revision: (formState as any).__revision 
+            __revision: formState.__revision as string | undefined,
           },
           controller.signal
         );
@@ -207,35 +216,49 @@ export function IssuerList({
               token={token}
             />
           ) : (
-            <IssuerRow
-              key={issuer.id}
-              issuer={issuer}
-              organizationName={getOrganizationName(issuer.organizationId)}
-              isLoading={actionLoading === issuer.id}
-              role={role}
-              onEdit={() => setEditingIssuerId(issuer.id)}
-              onSuspend={() =>
-                setConfirmAction({
-                  type: "suspend",
-                  issuerId: issuer.id,
-                  issuerName: issuer.name,
-                })
-              }
-              onActivate={() =>
-                setConfirmAction({
-                  type: "activate",
-                  issuerId: issuer.id,
-                  issuerName: issuer.name,
-                })
-              }
-              onRevoke={() =>
-                setConfirmAction({
-                  type: "revoke",
-                  issuerId: issuer.id,
-                  issuerName: issuer.name,
-                })
-              }
-            />
+            <div key={issuer.id} className="grid gap-3">
+              <IssuerRow
+                issuer={issuer}
+                organizationName={getOrganizationName(issuer.organizationId)}
+                isLoading={actionLoading === issuer.id}
+                role={role}
+                onEdit={() => setEditingIssuerId(issuer.id)}
+                isAttestationsExpanded={expandedAttestationsId === issuer.id}
+                onSuspend={() =>
+                  setConfirmAction({
+                    type: "suspend",
+                    issuerId: issuer.id,
+                    issuerName: issuer.name,
+                  })
+                }
+                onActivate={() =>
+                  setConfirmAction({
+                    type: "activate",
+                    issuerId: issuer.id,
+                    issuerName: issuer.name,
+                  })
+                }
+                onRevoke={() =>
+                  setConfirmAction({
+                    type: "revoke",
+                    issuerId: issuer.id,
+                    issuerName: issuer.name,
+                  })
+                }
+                onToggleAttestations={() =>
+                  setExpandedAttestationsId((current) => (current === issuer.id ? null : issuer.id))
+                }
+              />
+              {expandedAttestationsId === issuer.id && (
+                <IssuerAttestations
+                  issuerId={issuer.id}
+                  issuerName={issuer.name}
+                  issuerStatus={issuer.status}
+                  viewerRole={role ?? null}
+                  token={token}
+                />
+              )}
+            </div>
           ),
         )}
       </div>
@@ -284,10 +307,29 @@ export function IssuerList({
               activate: "ACTIVE" as const,
               revoke: "REVOKED" as const,
             };
-            handleStatusUpdate(confirmAction.issuerId, statusMap[confirmAction.type], issuer);
+            const { type, issuerId, issuerName } = confirmAction;
+            const runUpdate = () => handleStatusUpdate(issuerId, statusMap[type], issuer);
+
+            // Revocation is permanent and punitive (#141), so it requires a
+            // fresh wallet signature; suspend/activate are reversible and
+            // don't (matching api-key-list.tsx's revoke-only gating).
+            if (type === "revoke") {
+              setConfirmAction(null);
+              setPendingIssuerName(issuerName);
+              recentAuth.requestRecentAuth(runUpdate);
+            } else {
+              runUpdate();
+            }
           }}
           onCancel={() => setConfirmAction(null)}
           isProcessing={actionLoading === confirmAction.issuerId}
+        />
+      )}
+
+      {recentAuth.isPromptOpen && (
+        <RecentAuthGate
+          recentAuth={recentAuth}
+          actionDescription={`revoke the issuer${pendingIssuerName ? ` "${pendingIssuerName}"` : ""}.`}
         />
       )}
 
@@ -313,18 +355,22 @@ function IssuerRow({
   isLoading,
   role,
   onEdit,
+  isAttestationsExpanded,
   onSuspend,
   onActivate,
   onRevoke,
+  onToggleAttestations,
 }: {
   issuer: IssuerWithRevision;
   organizationName: string;
   isLoading: boolean;
   role: string | undefined;
   onEdit: () => void;
+  isAttestationsExpanded: boolean;
   onSuspend: () => void;
   onActivate: () => void;
   onRevoke: () => void;
+  onToggleAttestations: () => void;
 }) {
   // A transition is offered only when it's both a valid status change for
   // this issuer *and* something the current role is permitted to do
@@ -369,6 +415,14 @@ function IssuerRow({
           className="h-8 rounded border border-white/15 px-3 text-xs font-medium text-white hover:bg-white/10 disabled:opacity-50 transition"
         >
           Edit
+        </button>
+        <button
+          aria-expanded={isAttestationsExpanded}
+          className="h-8 rounded border border-white/15 px-3 text-xs font-medium text-white hover:bg-white/5 transition"
+          onClick={onToggleAttestations}
+          type="button"
+        >
+          {isAttestationsExpanded ? "Hide Attestations" : "Manage Attestations"}
         </button>
         {canActivate && (
           <button

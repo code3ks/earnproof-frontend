@@ -1,12 +1,15 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { updateOrganization, formatOrganizationStatus, getStatusTone, getOrganization, performLifecycleAction, type LifecycleAction } from "@/lib/api/organizations";
+import { Fragment, useCallback, useState } from "react";
+import { updateOrganization, formatOrganizationStatus, getStatusTone, getOrganization, type LifecycleAction } from "@/lib/api/organizations";
 import { ConfirmationDialog } from "@/components/common/confirmation-dialog";
 import { CursorPagination, type PaginationState } from "@/components/common/cursor-pagination";
 import { ResultsHeading } from "@/components/common/results-heading";
 import { ResolveConflictDialog } from "@/components/forms/resolve-conflict-dialog";
 import { StatusBadge } from "@/components/common/production-ui";
+import { RecentAuthGate } from "@/components/common/recent-auth-gate";
+import { useRecentAuth } from "@/lib/auth/recent-auth";
+import { signWithFreighter } from "@/lib/wallet/sign-message";
 import {
   DataTable,
   DataTableBody,
@@ -18,43 +21,54 @@ import {
   DataTableRow,
   useDataTableState,
 } from "@/components/common/data-table";
+import { OrganizationMembers } from "@/components/organizations/organization-members";
 import { formatMessage } from "@/lib/i18n";
 import { ApiConflictError } from "@/lib/api/client";
 import { useConflictResolution } from "@/hooks/use-conflict-resolution";
 import type { OrganizationWithRevision } from "@/lib/api/organizations";
 
+const organizationActionLabels: Record<LifecycleAction, string> = {
+  suspend: "Suspend",
+  activate: "Activate",
+  revoke: "Revoke",
+  archive: "Archive",
+};
+
 export function OrganizationList({
   organizations,
   loading,
   token,
+  walletAddress,
   paginationState,
   onPreviousPage,
   onNextPage,
   focusResults,
   onOrganizationUpdated,
-  onEditOrganization,
-  onLifecycleAction,
 }: {
   organizations: OrganizationWithRevision[];
   loading: boolean;
   token: string;
+  walletAddress: string;
   paginationState: PaginationState;
   onPreviousPage: () => void;
   onNextPage: () => void;
   focusResults: boolean;
-  onOrganizationUpdated: (organization: Organization) => void;
   onOrganizationUpdated: (organization: OrganizationWithRevision) => void;
-  onEditOrganization: (organizationId: string) => void;
-  onLifecycleAction: (action: LifecycleAction, organizationId: string, organizationName: string) => void;
 }) {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [expandedMembersId, setExpandedMembersId] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<{
     type: LifecycleAction;
     organizationId: string;
     organizationName: string;
   } | null>(null);
   const [currentOrganization, setCurrentOrganization] = useState<OrganizationWithRevision | null>(null);
+  const [pendingActionName, setPendingActionName] = useState<{ label: string; organizationName: string } | null>(null);
+  const recentAuth = useRecentAuth({
+    walletAddress,
+    signMessage: (message) => signWithFreighter(message, walletAddress),
+  });
 
   const {
     conflict,
@@ -89,9 +103,9 @@ export function OrganizationList({
         const updated = await updateOrganization(
           token,
           confirmAction.organizationId,
-          { 
+          {
             status: statusMap[confirmAction.type],
-            __revision: (formState as any).__revision 
+            __revision: formState.__revision as string | undefined,
           },
           controller.signal
         );
@@ -196,32 +210,48 @@ export function OrganizationList({
           ) : (
             <DataTableBody>
               {pageItems.map((org) => (
-                <OrganizationRow
-                  key={org.id}
-                  organization={org}
-                  isLoading={actionLoading === org.id}
-                  onSuspend={() =>
-                    setConfirmAction({
-                      type: "suspend",
-                      organizationId: org.id,
-                      organizationName: org.name,
-                    })
-                  }
-                  onActivate={() =>
-                    setConfirmAction({
-                      type: "activate",
-                      organizationId: org.id,
-                      organizationName: org.name,
-                    })
-                  }
-                  onRevoke={() =>
-                    setConfirmAction({
-                      type: "revoke",
-                      organizationId: org.id,
-                      organizationName: org.name,
-                    })
-                  }
-                />
+                <Fragment key={org.id}>
+                  <OrganizationRow
+                    organization={org}
+                    isLoading={actionLoading === org.id}
+                    isMembersExpanded={expandedMembersId === org.id}
+                    onSuspend={() =>
+                      setConfirmAction({
+                        type: "suspend",
+                        organizationId: org.id,
+                        organizationName: org.name,
+                      })
+                    }
+                    onActivate={() =>
+                      setConfirmAction({
+                        type: "activate",
+                        organizationId: org.id,
+                        organizationName: org.name,
+                      })
+                    }
+                    onRevoke={() =>
+                      setConfirmAction({
+                        type: "revoke",
+                        organizationId: org.id,
+                        organizationName: org.name,
+                      })
+                    }
+                    onToggleMembers={() =>
+                      setExpandedMembersId((current) => (current === org.id ? null : org.id))
+                    }
+                  />
+                  {expandedMembersId === org.id && (
+                    <tr>
+                      <td colSpan={4} className="px-4 py-3">
+                        <OrganizationMembers
+                          organizationId={org.id}
+                          organizationName={org.name}
+                          token={token}
+                        />
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               ))}
             </DataTableBody>
           )}
@@ -234,43 +264,6 @@ export function OrganizationList({
         >
           Organizations
         </ResultsHeading>
-
-        {/* Desktop header */}
-        <div className="hidden grid-cols-[2fr_1fr_1fr_auto] gap-4 border-b border-white/10 pb-2 text-xs font-semibold uppercase text-slate-400 md:grid">
-          <div>Organization</div>
-          <div>Status</div>
-          <div>Created</div>
-          <div>Actions</div>
-        </div>
-
-        {organizations.map((org) => (
-          <OrganizationRow
-            key={org.id}
-            organization={org}
-            isLoading={actionLoading === org.id}
-            onSuspend={() => 
-              setConfirmAction({
-                type: "suspend",
-                organizationId: org.id,
-                organizationName: org.name,
-              })
-            }
-            onActivate={() => 
-              setConfirmAction({
-                type: "activate",
-                organizationId: org.id,
-                organizationName: org.name,
-              })
-            }
-            onRevoke={() =>
-              setConfirmAction({
-                type: "revoke",
-                organizationId: org.id,
-                organizationName: org.name,
-              })
-            }
-          />
-        ))}
       </div>
 
       {/* Pagination controls */}
@@ -306,31 +299,43 @@ export function OrganizationList({
                   'Are you sure you want to activate "{organizationName}"? This will enable organization operations.',
                   { organizationName: confirmAction.organizationName },
                 )
-    <div className="grid gap-3">
-      {/* Desktop header */}
-      <div className="hidden grid-cols-[2fr_1fr_1fr_auto] gap-4 border-b border-white/10 pb-2 text-xs font-semibold uppercase text-slate-400 md:grid">
-        <div>Organization</div>
-        <div>Status</div>
-        <div>Created</div>
-        <div>Actions</div>
-      </div>
+          }
+          confirmText={organizationActionLabels[confirmAction.type]}
+          confirmVariant={confirmAction.type === "revoke" ? "danger" : "primary"}
+          onConfirm={() => {
+            const org = organizations.find((o) => o.id === confirmAction.organizationId);
+            if (!org) return;
+            const statusMap: Record<LifecycleAction, OrganizationWithRevision["status"]> = {
+              suspend: "SUSPENDED",
+              activate: "ACTIVE",
+              revoke: "REVOKED",
+              archive: "REVOKED",
+            };
+            const { type, organizationId, organizationName } = confirmAction;
+            const runUpdate = () => handleStatusUpdate(organizationId, statusMap[type], org);
 
-      {organizations.map((org) => (
-        <OrganizationRow
-          key={org.id}
-          organization={org}
-          onEdit={() => onEditOrganization(org.id)}
-          onSuspend={() => 
-            onLifecycleAction("suspend", org.id, org.name)
-          }
-          onActivate={() => 
-            onLifecycleAction("activate", org.id, org.name)
-          }
-          onRevoke={() =>
-            onLifecycleAction("revoke", org.id, org.name)
-          }
+            // Revoke/archive are permanent and irreversible, so they require a
+            // fresh wallet signature; suspend/activate are reversible operational
+            // toggles and don't (matching api-key-list.tsx's revoke-only gating).
+            if (type === "revoke" || type === "archive") {
+              setConfirmAction(null);
+              setPendingActionName({ label: organizationActionLabels[type], organizationName });
+              recentAuth.requestRecentAuth(runUpdate);
+            } else {
+              runUpdate();
+            }
+          }}
+          onCancel={() => setConfirmAction(null)}
+          isProcessing={actionLoading === confirmAction.organizationId}
         />
-      ))}
+      )}
+
+      {recentAuth.isPromptOpen && (
+        <RecentAuthGate
+          recentAuth={recentAuth}
+          actionDescription={`${pendingActionName?.label.toLowerCase() ?? "revoke"} the organization${pendingActionName ? ` "${pendingActionName.organizationName}"` : ""}.`}
+        />
+      )}
 
       {conflict.isActive && (
         <ResolveConflictDialog
@@ -344,22 +349,26 @@ export function OrganizationList({
           isRetrying={isRetrying || isReloading}
         />
       )}
-    </div>
+    </>
   );
 }
 
 function OrganizationRow({
   organization,
-  onEdit,
+  isLoading,
+  isMembersExpanded,
   onSuspend,
   onActivate,
   onRevoke,
+  onToggleMembers,
 }: {
   organization: OrganizationWithRevision;
-  onEdit: () => void;
+  isLoading: boolean;
+  isMembersExpanded: boolean;
   onSuspend: () => void;
   onActivate: () => void;
   onRevoke: () => void;
+  onToggleMembers: () => void;
 }) {
   const canSuspend = organization.status === "ACTIVE";
   const canActivate = organization.status === "SUSPENDED" || organization.status === "PENDING";
@@ -403,6 +412,14 @@ function OrganizationRow({
 
       <DataTableCell>
         <div className="flex flex-wrap gap-2">
+          <button
+            aria-expanded={isMembersExpanded}
+            className="h-8 rounded border border-white/15 px-3 text-xs font-medium text-white hover:bg-white/5 transition"
+            onClick={onToggleMembers}
+            type="button"
+          >
+            {isMembersExpanded ? "Hide Members" : "Manage Members"}
+          </button>
           {canActivate && (
             <button
               onClick={onActivate}
@@ -433,39 +450,5 @@ function OrganizationRow({
         </div>
       </DataTableCell>
     </DataTableRow>
-      {/* Actions */}
-      <div className="flex flex-wrap gap-2">
-        <button
-          onClick={onEdit}
-          className="h-8 rounded border border-blue-300/30 px-3 text-xs font-medium text-blue-200 hover:bg-blue-300/10 transition"
-        >
-          Edit
-        </button>
-        {canActivate && (
-          <button
-            onClick={onActivate}
-            className="h-8 rounded border border-emerald-300/30 px-3 text-xs font-medium text-emerald-200 hover:bg-emerald-300/10 transition"
-          >
-            Activate
-          </button>
-        )}
-        {canSuspend && (
-          <button
-            onClick={onSuspend}
-            className="h-8 rounded border border-amber-300/30 px-3 text-xs font-medium text-amber-200 hover:bg-amber-300/10 transition"
-          >
-            Suspend
-          </button>
-        )}
-        {canRevoke && (
-          <button
-            onClick={onRevoke}
-            className="h-8 rounded border border-rose-300/30 px-3 text-xs font-medium text-rose-200 hover:bg-rose-300/10 transition"
-          >
-            Revoke
-          </button>
-        )}
-      </div>
-    </div>
   );
 }

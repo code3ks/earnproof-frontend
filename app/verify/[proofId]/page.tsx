@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect, useState, useCallback } from "react";
+import { ReactNode, useState } from "react";
 import Link from "next/link";
 import { PageHeading } from "@/components/common/page-heading";
 import { pageContainer } from "@/components/common/production-ui";
@@ -8,15 +8,9 @@ import { PublicShell } from "@/components/layout/public-shell";
 import { ProofLifecycleTimeline } from "@/components/proofs/proof-lifecycle-timeline";
 import { Timestamp } from "@/components/common/timestamp";
 import { PrintableProofSummary } from "@/components/verification/printable-proof-summary";
-import { apiClient } from "@/lib/api/client";
+import { useProofStatusPolling } from "@/lib/proof-status-polling";
 import { formatDateRange, formatMessage } from "@/lib/i18n";
 import type { VerifyProofResponse } from "@/lib/api/generated/v1";
-
-type VerificationState = {
-  loading: boolean;
-  result: VerifyProofResponse | null;
-  error: string | null;
-};
 
 function ResultItem({ label, value }: { label: string; value: ReactNode }) {
   return (
@@ -108,7 +102,13 @@ function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) 
   );
 }
 
-function VerificationResult({ result }: { result: VerifyProofResponse }) {
+function VerificationResult({
+  result,
+  isLive,
+}: {
+  result: VerifyProofResponse;
+  isLive: boolean;
+}) {
   const statusStyle = statusStyles[result.status];
 
   return (
@@ -116,8 +116,16 @@ function VerificationResult({ result }: { result: VerifyProofResponse }) {
       {/* Interactive on-screen presentation is excluded from print; only
           PrintableProofSummary below renders when printing. */}
       <div className="space-y-6 print:hidden">
-        <div className={`inline-flex rounded-md border px-4 py-2 text-sm font-semibold uppercase ${statusStyle.border} ${statusStyle.bg} ${statusStyle.text}`}>
-          {result.status}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className={`inline-flex rounded-md border px-4 py-2 text-sm font-semibold uppercase ${statusStyle.border} ${statusStyle.bg} ${statusStyle.text}`}>
+            {result.status}
+          </div>
+          {isLive && (
+            <span className="inline-flex items-center gap-1.5 text-xs text-slate-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-cyan-300 animate-pulse" />
+              Watching for updates
+            </span>
+          )}
         </div>
 
       <ProofLifecycleTimeline
@@ -133,10 +141,6 @@ function VerificationResult({ result }: { result: VerifyProofResponse }) {
         <p className="text-sm leading-6 text-slate-300 mb-4">
           {getStatusMessage(result.result)}
         </p>
-        <div className="rounded-lg border border-white/10 bg-white/[0.04] p-6">
-          <p className="text-sm leading-6 text-slate-300 mb-4">
-            {getStatusMessage(result.result)}
-          </p>
 
           {result.credential && result.proof ? (
             <dl className="grid gap-4 text-sm text-slate-300 sm:grid-cols-2">
@@ -234,82 +238,31 @@ function VerificationResult({ result }: { result: VerifyProofResponse }) {
   );
 }
 
+function mapErrorMessage(raw: string): string {
+  if (raw.includes("404")) {
+    return "Proof not found. Please check the proof identifier and try again.";
+  }
+  if (raw.includes("500")) {
+    return "Server error occurred during verification. Please try again later.";
+  }
+  if (raw.toLowerCase().includes("timeout") || raw.toLowerCase().includes("timed out")) {
+    return "Request timed out. Please check your connection and try again.";
+  }
+  return "Unable to verify proof. Please check your connection and try again.";
+}
+
 export default function VerifyProofPage({ params }: { params: { proofId: string } }) {
-  const [state, setState] = useState<VerificationState>({
-    loading: true,
-    result: null,
-    error: null
-  });
+  // This endpoint takes no auth token (see verifyProof's doc comment), so
+  // the hook's unused `token` slot doubles as a retry nonce: bumping it
+  // changes the hook's internal (proofId, token) key, which restarts a
+  // fresh polling loop — giving the "Try again" button an immediate manual
+  // retry on top of the hook's own automatic backoff-and-retry.
+  const [retryNonce, setRetryNonce] = useState(0);
+  const polling = useProofStatusPolling(params.proofId, String(retryNonce));
 
-  const verifyProof = useCallback(async () => {
-    setState({ loading: true, result: null, error: null });
+  const handleRetry = () => setRetryNonce((n) => n + 1);
 
-    try {
-      const encodedProofId = encodeURIComponent(params.proofId);
-      const result = await apiClient<VerifyProofResponse>({
-        path: `/proofs/${encodedProofId}/verify`,
-        method: "GET"
-      });
-
-      setState({ loading: false, result, error: null });
-    } catch (err) {
-      let errorMessage = "Unable to verify proof. Please check your connection and try again.";
-      
-      if (err instanceof Error) {
-        if (err.message.includes("404")) {
-          errorMessage = "Proof not found. Please check the proof identifier and try again.";
-        } else if (err.message.includes("500")) {
-          errorMessage = "Server error occurred during verification. Please try again later.";
-        } else if (err.message.includes("timeout")) {
-          errorMessage = "Request timed out. Please check your connection and try again.";
-        }
-      }
-
-      setState({ loading: false, result: null, error: errorMessage });
-    }
-  }, [params.proofId]);
-
-  useEffect(() => {
-    let cancelled = false;
-    
-    const loadProof = async () => {
-      setState({ loading: true, result: null, error: null });
-
-      try {
-        const encodedProofId = encodeURIComponent(params.proofId);
-        const result = await apiClient<VerifyProofResponse>({
-          path: `/proofs/${encodedProofId}/verify`,
-          method: "GET"
-        });
-
-        if (!cancelled) {
-          setState({ loading: false, result, error: null });
-        }
-      } catch (err) {
-        if (!cancelled) {
-          let errorMessage = "Unable to verify proof. Please check your connection and try again.";
-          
-          if (err instanceof Error) {
-            if (err.message.includes("404")) {
-              errorMessage = "Proof not found. Please check the proof identifier and try again.";
-            } else if (err.message.includes("500")) {
-              errorMessage = "Server error occurred during verification. Please try again later.";
-            } else if (err.message.includes("timeout")) {
-              errorMessage = "Request timed out. Please check your connection and try again.";
-            }
-          }
-
-          setState({ loading: false, result: null, error: errorMessage });
-        }
-      }
-    };
-
-    loadProof();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [params.proofId]);
+  const displayError = polling.error ? mapErrorMessage(polling.error) : null;
 
   return (
     <PublicShell>
@@ -321,13 +274,15 @@ export default function VerifyProofPage({ params }: { params: { proofId: string 
           })}
         />
 
-        {state.loading && <LoadingState />}
+        {polling.loading && !polling.data && <LoadingState />}
 
-        {state.error && (
-          <ErrorState error={state.error} onRetry={verifyProof} />
+        {displayError && !polling.data && (
+          <ErrorState error={displayError} onRetry={handleRetry} />
         )}
 
-        {state.result && <VerificationResult result={state.result} />}
+        {polling.data && (
+          <VerificationResult result={polling.data} isLive={!polling.isTerminal} />
+        )}
       </div>
     </PublicShell>
   );

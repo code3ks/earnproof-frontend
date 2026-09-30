@@ -119,6 +119,7 @@ export const migrations: Record<StorageKey, Record<number, StorageMigration>> = 
     1: (data) => data,
   },
   FORM_DRAFTS: {
+    // Version 1 is current - no migration needed
     1: (data) => data,
   },
   DISPLAY_PREFERENCES: {
